@@ -31,6 +31,13 @@ It combines **semantic search** (vector database) with **relational reasoning** 
 - Self-referential — you can even ask the system about its own design documents
 - Strong focus on home health topics: nurse credentialing, compliance, clinical operations, and technology initiatives
 
+### Example Knowledge Base
+You can explore the **public demo knowledge base** used in this project here:
+
+→ **[Home_Health_Knowledge_Base (Google Drive)](https://drive.google.com/drive/u/1/folders/1mv-iDrQdpMw8YBVJSwK3WcSR-CfIDmnk)**
+
+This folder contains realistic sample documents across company overview, departments (including credentialing), policies, regulatory guidance, and technology initiatives.
+
 ### Future Integration
 Designed to integrate with internal tools, starting with the **Nurse Credentialing Tool** (automated checklists, expiration tracking, compliance dashboards).
 
@@ -38,16 +45,14 @@ Designed to integrate with internal tools, starting with the **Nurse Credentiali
 
 ## 📁 Knowledge Base Structure
 
-The system is built around a well-organized Google Drive folder called **`Home_Health_Knowledge_Base`** containing:
+The system expects a well-organized Google Drive folder with the following structure (see full details in `docs/knowledge_base_structure.md`):
 
 - `01_Company_Overview/`
-- `02_Departments/` (including Credentialing & Compliance)
+- `02_Departments/` (with `Credentialing_and_Compliance/`)
 - `03_Projects_and_Initiatives/`
 - `04_Policies_and_Procedures/`
 - `05_Regulatory_Guidance_and_Resources/`
-- `06_Technology_and_Digital_Initiatives/` (with dedicated `DocSense_AI_Project/` folder)
-
-See the full directory structure and sample documents in the `docs/` folder of this repo.
+- `06_Technology_and_Digital_Initiatives/` (including `DocSense_AI_Project/`)
 
 ---
 
@@ -76,7 +81,7 @@ For commercial use, custom licensing, or exceptions, please contact the project 
 
 - ✅ Project planning and design documents completed
 - ✅ Requirements Specification & High-Level Architecture written
-- ✅ Public demo knowledge base structure defined
+- ✅ Public demo knowledge base created and shared
 - 🔄 Setting up repository and initial code structure
 - 🔄 Building Google Drive ingestion pipeline (next)
 
@@ -86,20 +91,13 @@ Design documents are located in the `docs/` folder.
 
 ## 🚀 Getting Started (Coming Soon)
 
-1. Clone the repository
-2. Set up Python environment
-3. Configure Google Drive API credentials
-4. Populate the `Home_Health_Knowledge_Base` folder
-5. Run the ingestion pipeline
-6. Start the chat interface
-
-Detailed setup instructions will be added once the first working prototype is ready.
+Detailed setup and installation instructions will be added once the first working prototype is ready.
 
 ---
 
 ## 📬 Contact / Commercial Inquiries
 
-This project is being developed for home health agencies with a focus on practical, secure knowledge management and nurse credentialing support.
+This project is being developed to improve knowledge access and compliance in home health care.
 
 Interested in collaboration, custom development, or licensing? Feel free to reach out.
 
