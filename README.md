@@ -72,34 +72,7 @@ DocSense AI includes a dedicated `testing/` directory with comprehensive tests t
 
 ### How to Run the Tests
 
-1. **Make sure dependencies are installed**:
+1. **Run Main Test Script**:
    ```bash
-   pip install -r requirements.txt
-   ```
-   
-2. **Run the full ingestion pipeline first (required for most tests)**:
-   ```bash
-   python -m ingestion.ingest --full --clean --reset-db --force
-   ```
-   
-3. **Run all tests**:
-   ```bash
-   pytest testing/ -v --tb=short
-   ```
-      
-4. **Run only specific test files**:
-   ```bash
-   # Retrieval and access control tests (most important)
-   pytest testing/test_retrieval.py -v --tb=short
-
-   # Text extraction tests
-   pytest testing/test_text_extractor.py -v --tb=short
-
-   # Vector store / chunking tests
-   pytest testing/test_chunk_and_embed.py -v --tb=short
-   ```
-      
-5. **Run a single test**:
-   ```bash
-   pytest testing/test_retrieval.py::test_retrieve_with_access_control -v --tb=short
+   ./run_full_test_pipeline.sh
    ```
