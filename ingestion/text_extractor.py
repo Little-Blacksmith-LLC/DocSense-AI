@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import pymupdf4llm
 import fitz  # PyMuPDF core
+import os
 
 DOWNLOAD_FOLDER = Path("downloaded_docs")
 EXTRACTED_FOLDER = Path("extracted_texts")
@@ -155,5 +156,4 @@ def main():
     print(f"   → Clean images: {IMAGES_BASE}/")
 
 if __name__ == "__main__":
-    import os
     main()
