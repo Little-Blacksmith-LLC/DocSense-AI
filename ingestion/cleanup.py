@@ -43,31 +43,41 @@ def get_size(path: Path) -> int:
     return sum(f.stat().st_size for f in path.rglob('*') if f.is_file())
 
 
-def cleanup_temp_directories(force: bool = False, keep_extracted: bool = None):
-    """Clean temporary download and image directories."""
+def cleanup_temp_directories(force: bool = False, keep_extracted: bool = False):
+    """
+    Clean up temporary directories after successful ingestion.
+    
+    By default, we delete downloaded_docs, extracted_images, AND extracted_texts
+    because all necessary data is now stored in the Chroma vector database.
+    
+    Args:
+        force: Skip confirmation prompt (used in automated pipeline).
+        keep_extracted: If True, preserve extracted_texts/ (useful for debugging).
+                        Default is False = delete everything except the vector store.
+    """
     to_delete = []
 
+    # Always clean these two
     if DOWNLOAD_FOLDER.exists():
         to_delete.append(DOWNLOAD_FOLDER)
     if IMAGES_BASE.exists():
         to_delete.append(IMAGES_BASE)
 
-    # Only delete extracted_texts if user explicitly wants to
-    if keep_extracted is False and EXTRACTED_FOLDER.exists():
-        to_delete.append(EXTRACTED_FOLDER)
-    elif keep_extracted is None and not KEEP_EXTRACTED_TEXT and EXTRACTED_FOLDER.exists():
+    # Delete extracted_texts unless explicitly told to keep it
+    if not keep_extracted and EXTRACTED_FOLDER.exists():
         to_delete.append(EXTRACTED_FOLDER)
 
     if not to_delete:
         print("✅ No temporary directories to clean.")
         return
 
-    total_size_gb = sum(get_size(p) for p in to_delete) / (1024**3)
-
-    print("🧹 Cleanup Summary:")
+    # Show cleanup summary
+    total_size_mb = sum(get_size(p) for p in to_delete) / (1024 * 1024)
+    print("🧹 Temporary files cleanup summary:")
     for p in to_delete:
-        print(f"   - {p} ({get_size(p)/(1024*1024):.1f} MB)")
-    print(f"   Total to free: ~{total_size_gb:.2f} GB\n")
+        size_mb = get_size(p) / (1024 * 1024)
+        print(f"   - {p.name} ({size_mb:.1f} MB)")
+    print(f"   Total to free: ~{total_size_mb:.2f} MB\n")
 
     if not force:
         confirm = input("Proceed with deletion? (yes/no): ").strip().lower()
@@ -82,8 +92,8 @@ def cleanup_temp_directories(force: bool = False, keep_extracted: bool = None):
         except Exception as e:
             print(f"⚠️ Failed to delete {p}: {e}")
 
-    print("🧹 Temporary directories cleanup completed.\n")
-
+    print("🧹 Temporary files cleanup completed.")
+    
 
 def reset_database(force: bool = False):
     """Completely reset the Chroma vector database."""
