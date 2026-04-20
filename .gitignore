@@ -218,3 +218,8 @@ downloaded_docs/
 
 # Environment variables
 .env
+
+# Temp Dirs
+extracted_texts/
+extracted_images/
+
