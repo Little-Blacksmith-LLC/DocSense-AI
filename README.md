@@ -1,5 +1,4 @@
 # DocSense AI
-
 **Intelligent Knowledge Management & Assistant for Home Health Agencies**
 
 A private, secure **Graph RAG** powered knowledge assistant that helps any employee or contractor quickly find, understand, and connect information across internal documents.
@@ -7,7 +6,6 @@ A private, secure **Graph RAG** powered knowledge assistant that helps any emplo
 ---
 
 ## 🎯 The Challenge
-
 Home health and nursing agencies manage thousands of pages of critical documents:
 - Policies and procedures
 - Regulatory guidance (Medicare CoPs, HIPAA)
@@ -18,7 +16,6 @@ Home health and nursing agencies manage thousands of pages of critical documents
 Employees often spend significant time searching for the right information or trying to understand dense technical and regulatory content.
 
 ## ✅ The Solution
-
 **DocSense AI** automatically ingests documents from Google Drive, builds a rich **knowledge graph** of entities and relationships, and lets users ask natural language questions.
 
 It combines **semantic search** (vector database) with **relational reasoning** (graph database) to deliver accurate, sourced answers while discovering important cross-document connections.
@@ -32,8 +29,7 @@ It combines **semantic search** (vector database) with **relational reasoning** 
 - Strong focus on home health topics: nurse credentialing, compliance, clinical operations, and technology initiatives
 
 ### Example Knowledge Base
-You can explore the **public demo knowledge base** used in this project here:
-
+You can explore the **public demo knowledge base** used in this project here:  
 → **[Home_Health_Knowledge_Base (Google Drive)](https://drive.google.com/drive/u/1/folders/1mv-iDrQdpMw8YBVJSwK3WcSR-CfIDmnk)**
 
 This folder contains realistic sample documents across company overview, departments (including credentialing), policies, regulatory guidance, and technology initiatives.
@@ -44,9 +40,7 @@ Designed to integrate with internal tools, starting with the **Nurse Credentiali
 ---
 
 ## 📁 Knowledge Base Structure
-
 The system expects a well-organized Google Drive folder with the following structure (see full details in `docs/knowledge_base_structure.md`):
-
 - `01_Company_Overview/`
 - `02_Departments/` (with `Credentialing_and_Compliance/`)
 - `03_Projects_and_Initiatives/`
@@ -57,50 +51,55 @@ The system expects a well-organized Google Drive folder with the following struc
 ---
 
 ## 🛠️ Tech Stack (Planned)
-
 - **Backend**: Python + FastAPI
 - **Ingestion**: Google Drive API + LangChain/LlamaIndex
-- **Storage**: Vector Database + Neo4j (Graph Database)
+- **Storage**: Vector Database (Chroma) + Neo4j (Graph Database)
 - **LLM**: Local models via Ollama (privacy-first)
 - **Frontend**: Streamlit or lightweight React chat interface (demo)
 - **Authentication & Access Control**: Google OAuth + folder-level permissions
 
 ---
 
-## 📄 License
+## 🧪 Testing
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+DocSense AI includes a dedicated `testing/` directory with comprehensive tests to ensure reliability, especially around **access control** and the ingestion pipeline.
 
-The code is publicly visible so others can learn from it. However, if you modify and run this software as a service, you must make your modified source code available under the same license.
+### What the Tests Cover
+- **Retrieval & Access Control**: Validates that users can only see authorized folders (HR vs Technology separation, nested folders, etc.)
+- **Text Extraction**: Checks that PDFs are correctly converted to structured Markdown + JSON with preserved folder metadata
+- **Vector Store Health**: Ensures ChromaDB is properly populated with correct metadata
+- **Relevance Filtering**: Tests similarity threshold behavior to reduce noise from unrelated queries
 
-For commercial use, custom licensing, or exceptions, please contact the project owner.
+### How to Run the Tests
 
----
+1. **Make sure dependencies are installed**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+   
+2. **Run the full ingestion pipeline first (required for most tests)**:
+   ```bash
+   python -m ingestion.ingest --full --clean --reset-db --force
+   ```
+   
+3. **Run all tests**:
+   ```bash
+   pytest testing/ -v --tb=short
+   ```
+      
+4. **Run only specific test files**:
+   ```bash
+   # Retrieval and access control tests (most important)
+   pytest testing/test_retrieval.py -v --tb=short
 
-## 📋 Project Status
+   # Text extraction tests
+   pytest testing/test_text_extractor.py -v --tb=short
 
-- ✅ Project planning and design documents completed
-- ✅ Requirements Specification & High-Level Architecture written
-- ✅ Public demo knowledge base created and shared
-- 🔄 Setting up repository and initial code structure
-- 🔄 Building Google Drive ingestion pipeline (next)
-
-Design documents are located in the `docs/` folder.
-
----
-
-## 🚀 Getting Started (Coming Soon)
-
-Detailed setup and installation instructions will be added once the first working prototype is ready.
-
----
-
-## 📬 Contact / Commercial Inquiries
-
-This project is being developed to improve knowledge access and compliance in home health care.
-
-Interested in collaboration, custom development, or licensing? Feel free to reach out.
-
----
-
-**Built with ❤️ for better knowledge access in home health care.**
+   # Vector store / chunking tests
+   pytest testing/test_chunk_and_embed.py -v --tb=short
+   ```
+      
+5. **Run a single test**:
+   ```bash
+   pytest testing/test_retrieval.py::test_retrieve_with_access_control -v --tb=short
+   ```
