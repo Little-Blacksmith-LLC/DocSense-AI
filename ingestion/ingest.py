@@ -25,7 +25,7 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
-
+from ingestion.cleanup import cleanup_temp_directories
 from .config import (
     DOWNLOAD_FOLDER, EXTRACTED_FOLDER, IMAGES_BASE, CHROMA_PATH,
     KEEP_PDFS, KEEP_EXTRACTED_TEXT, KEEP_IMAGES,
@@ -158,12 +158,18 @@ def main():
             print("\n🔨 Step 3: Chunking and embedding into ChromaDB...")
             run_chunk_embed()
 
-        # Cleanup temporary files (only after successful embedding)
+        # Cleanup temporary files — only after successful embedding
         if (args.full or args.embed_only) and (args.clean or DEFAULT_CLEAN):
-            clean_pdfs = not KEEP_PDFS
-            clean_images = not KEEP_IMAGES
-            cleanup_directories(clean_pdfs, clean_images, args.force or DEFAULT_FORCE)
+            print("\n🧹 Starting temporary files cleanup...")
 
+            # Default: delete ALL temporary folders (including extracted_texts)
+            # Only keep extracted_texts if you explicitly want to debug chunking
+            cleanup_temp_directories(
+                force=True,           # Skip confirmation in automated pipeline
+                keep_extracted=False  # ← This controls whether extracted_texts is kept
+            )
+
+        # Final success message
         print("\n🎉 Pipeline completed successfully!")
         print(f"   Vector store: {CHROMA_PATH.resolve()}")
 
