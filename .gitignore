@@ -216,10 +216,12 @@ token.pickle
 # Downloaded files (optional - you can choose)
 downloaded_docs/
 
-# Environment variables
-.env
-
-# Temp Dirs
+# Data and generated files
+downloaded_docs/
 extracted_texts/
 extracted_images/
+vector_store/
+drive_metadata.json
 
+# Neo4j data
+neo4j/
