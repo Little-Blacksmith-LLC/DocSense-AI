@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
 """
-DocSense AI - Chunking & Embedding Pipeline
-Clean version: No internal reset logic. Relies on ingest.py for --reset-db.
+DocSense AI - Chunking & Embedding (defensive Chroma setup)
 """
-
 import json
 from pathlib import Path
 import uuid
 import os
-
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 import chromadb
 import ollama
-
-EXTRACTED_FOLDER = Path("extracted_texts")
-CHROMA_PATH = Path("vector_store/chroma_db")
+from ingestion.config import EXTRACTED_FOLDER, CHROMA_PATH
+from ingestion.folder_summarizer import main as run_folder_summarizer
 
 # ========================= CONFIG =========================
 EMBEDDING_MODEL = "nomic-embed-text"
@@ -23,23 +19,22 @@ VISION_MODEL = "llama3.2-vision:11b"
 CHUNK_SIZE = 600
 CHUNK_OVERLAP = 120
 
-
 def get_chroma_collection():
-    """Setup ChromaDB with robust directory handling."""
+    """Ultra-defensive Chroma setup"""
     print("🔧 Setting up ChromaDB client...")
-    
+   
     CHROMA_PATH.mkdir(parents=True, exist_ok=True)
-    os.chmod(str(CHROMA_PATH), 0o755)
-
+    os.chmod(str(CHROMA_PATH), 0o777)   # Ensure full write access
+    
     client = chromadb.PersistentClient(path=str(CHROMA_PATH))
-
     collection_name = "docsense_knowledge_base"
+    
     try:
         client.delete_collection(collection_name)
         print(f"✅ Cleared existing collection: {collection_name}")
     except Exception:
-        pass  # First time or already deleted
-
+        pass
+    
     collection = client.get_or_create_collection(
         name=collection_name,
         metadata={"hnsw:space": "cosine"}
@@ -47,9 +42,7 @@ def get_chroma_collection():
     print(f"✅ Chroma collection ready: {collection_name}")
     return collection
 
-
-collection = None  # Will be initialized in main()
-
+collection = None
 
 def generate_image_caption(image_path: str) -> str:
     try:
@@ -73,7 +66,6 @@ def generate_image_caption(image_path: str) -> str:
         print(f" ⚠️ Caption failed: {e}")
         return "Image from document (visual element)"
 
-
 def process_extracted_file(json_path: Path):
     global collection
     if collection is None:
@@ -81,11 +73,13 @@ def process_extracted_file(json_path: Path):
 
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    
+  
     doc_name = data.get("document_name", json_path.stem)
     relative_folder = data.get("relative_folder", ".")
     full_markdown = data.get("full_markdown", "")
     images = data.get("images", [])
+    drive_link = data.get("drive_link")
+    drive_file_id = data.get("drive_file_id")
 
     print(f"\n🔨 Processing: {doc_name} (folder: {relative_folder})")
 
@@ -112,6 +106,8 @@ def process_extracted_file(json_path: Path):
                     "relative_folder": relative_folder,
                     "chunk_type": "text",
                     "section": chunk_doc.metadata.get("Header 1", "General"),
+                    "drive_link": drive_link,
+                    "drive_file_id": drive_file_id
                 }
             })
 
@@ -129,6 +125,8 @@ def process_extracted_file(json_path: Path):
                     "chunk_type": "image",
                     "page_number": img.get("page_number"),
                     "image_path": str(img_path_full),
+                    "drive_link": drive_link,
+                    "drive_file_id": drive_file_id
                 }
             })
 
@@ -136,24 +134,23 @@ def process_extracted_file(json_path: Path):
         texts = [c["text"] for c in all_chunks]
         metadatas = [c["metadata"] for c in all_chunks]
         ids = [c["metadata"]["chunk_id"] for c in all_chunks]
-        
+       
         collection.add(documents=texts, metadatas=metadatas, ids=ids)
         print(f" ✅ Stored {len(all_chunks)} chunks")
     else:
         print(" ⚠️ No chunks generated")
 
-
 def main():
-    """Main entry point - called by ingest.py"""
     json_files = list(EXTRACTED_FOLDER.glob("*.json"))
     print(f"Found {len(json_files)} documents to process.\n")
-    
+   
     for json_file in json_files:
         process_extracted_file(json_file)
-    
+   
     print("\n🎉 Fully local chunking & embedding completed!")
     print(f" Vector store: {CHROMA_PATH.resolve()}")
-
+    
+    run_folder_summarizer()
 
 if __name__ == "__main__":
     main()

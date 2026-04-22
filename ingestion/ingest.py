@@ -1,129 +1,80 @@
 #!/usr/bin/env python3
 """
 DocSense AI - Unified Ingestion Orchestrator
-Supports --clean (temp files) and --reset-db (Chroma database)
+Stable reset using collection delete (no directory deletion)
 
 Usage:
 
-# 1. Normal run: clean temp files, keep existing database (fastest for small changes)
-python -m ingestion.ingest --full --clean
-
-# 2. Full clean re-ingestion (recommended when changing chunk size, extraction logic, etc.)
-python -m ingestion.ingest --full --clean --reset-db
-
-# 3. Force mode (no confirmation prompts)
-python -m ingestion.ingest --full --clean --reset-db --force
-
-# 4. Just reset the database without re-running everything
-python -m ingestion.ingest --embed-only --reset-db --force
-
-# 5. Test with dry run
-python -m ingestion.ingest --full --clean --reset-db --dry-run
+python -m ingestion.ingest --full --reset-db --force
 """
-
 import argparse
 import shutil
 import sys
+import os
+import chromadb
 from pathlib import Path
+
 from ingestion.cleanup import cleanup_temp_directories
-from .config import (
+from ingestion.config import (
     DOWNLOAD_FOLDER, EXTRACTED_FOLDER, IMAGES_BASE, CHROMA_PATH,
-    KEEP_PDFS, KEEP_EXTRACTED_TEXT, KEEP_IMAGES,
-    DEFAULT_CLEAN, DEFAULT_FORCE
 )
 
-# Import main functions
-from .drive_explorer import main as run_download
-from .text_extractor import main as run_extract
-from .chunk_and_embed import main as run_chunk_embed
-
-
-def get_size(path: Path) -> int:
-    """Return size in bytes of directory or file."""
-    if not path.exists():
-        return 0
-    if path.is_file():
-        return path.stat().st_size
-    return sum(f.stat().st_size for f in path.rglob('*') if f.is_file())
-
-
-def cleanup_directories(clean_pdfs: bool, clean_images: bool, force: bool = False):
-    """Clean only temporary folders (does NOT touch Chroma DB)."""
-    to_delete = []
-    if clean_pdfs and DOWNLOAD_FOLDER.exists():
-        to_delete.append(DOWNLOAD_FOLDER)
-    if clean_images and IMAGES_BASE.exists():
-        to_delete.append(IMAGES_BASE)
-    if not KEEP_EXTRACTED_TEXT and EXTRACTED_FOLDER.exists():
-        to_delete.append(EXTRACTED_FOLDER)
-
-    if not to_delete:
-        print("✅ No temporary files to clean up.")
-        return
-
-    total_size_gb = sum(get_size(p) for p in to_delete) / (1024**3)
-
-    print(f"\n🧹 Temporary files cleanup summary:")
-    for p in to_delete:
-        print(f"   - {p} ({get_size(p)/(1024*1024):.1f} MB)")
-    print(f"   Total to free: ~{total_size_gb:.2f} GB")
-
-    if not force:
-        confirm = input("\nProceed with deletion? (yes/no): ").strip().lower()
-        if confirm not in ("yes", "y"):
-            print("Cleanup cancelled.")
-            return
-
-    for p in to_delete:
-        try:
-            shutil.rmtree(p)
-            print(f"✅ Deleted: {p}")
-        except Exception as e:
-            print(f"⚠️ Failed to delete {p}: {e}")
-
-    print("🧹 Temporary files cleanup completed.\n")
+from ingestion.drive_explorer import main as run_download
+from ingestion.text_extractor import main as run_extract
+from ingestion.chunk_and_embed import main as run_chunk_embed
+from ingestion.graph_builder import build_graph
 
 
 def reset_chroma_db(force: bool = False):
-    """Delete the entire Chroma database directory."""
+    """Clear Chroma data by deleting the collection only (fixes readonly error)."""
     if not CHROMA_PATH.exists():
-        print("ℹ️  Chroma DB directory does not exist yet.")
+        CHROMA_PATH.mkdir(parents=True, exist_ok=True)
+        os.chmod(str(CHROMA_PATH), 0o777)
+        print("✅ Chroma directory ready.")
         return True
 
-    print(f"\n⚠️  WARNING: This will completely delete the vector database at:")
-    print(f"   {CHROMA_PATH.resolve()}")
-    print("   All previously embedded chunks will be lost.")
+    print(f"\n⚠️ WARNING: This will CLEAR ALL data in the vector database at:")
+    print(f" {CHROMA_PATH.resolve()}")
+    print(" The directory itself will NOT be deleted.")
 
     if not force:
-        confirm = input("\nType 'RESET' to confirm database reset: ").strip()
+        confirm = input("\nType 'RESET' to confirm: ").strip()
         if confirm != "RESET":
-            print("Database reset cancelled.")
+            print("Reset cancelled.")
             return False
 
     try:
-        shutil.rmtree(CHROMA_PATH)
-        print("✅ Chroma database directory deleted.")
-        CHROMA_PATH.mkdir(parents=True, exist_ok=True)
-        print("✅ New empty Chroma database directory created.")
+        client = chromadb.PersistentClient(path=str(CHROMA_PATH))
+        collection_name = "docsense_knowledge_base"
+        
+        try:
+            client.delete_collection(collection_name)
+            print(f"✅ Deleted existing collection: {collection_name}")
+        except Exception:
+            pass  # Collection didn't exist
+
+        # Recreate fresh
+        client.get_or_create_collection(
+            name=collection_name,
+            metadata={"hnsw:space": "cosine"}
+        )
+        os.chmod(str(CHROMA_PATH), 0o777)
+        print("✅ Chroma collection cleared and recreated successfully.")
         return True
     except Exception as e:
-        print(f"❌ Failed to reset Chroma DB: {e}")
+        print(f"❌ Failed to reset Chroma: {e}")
         return False
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="DocSense AI - Unified Ingestion Pipeline"
-    )
-    parser.add_argument("--full", action="store_true", help="Run full pipeline")
-    parser.add_argument("--download-only", action="store_true", help="Only download")
-    parser.add_argument("--extract-only", action="store_true", help="Only extract")
-    parser.add_argument("--embed-only", action="store_true", help="Only chunk & embed")
-    parser.add_argument("--clean", action="store_true", help="Clean temporary folders after embedding")
-    parser.add_argument("--reset-db", action="store_true", help="Reset (delete) Chroma database before embedding")
-    parser.add_argument("--force", action="store_true", help="Skip confirmation prompts")
-    parser.add_argument("--dry-run", action="store_true", help="Show actions without executing")
-
+    parser = argparse.ArgumentParser(description="DocSense AI - Unified Ingestion Pipeline")
+    parser.add_argument("--full", action="store_true")
+    parser.add_argument("--download-only", action="store_true")
+    parser.add_argument("--extract-only", action="store_true")
+    parser.add_argument("--embed-only", action="store_true")
+    parser.add_argument("--clean", action="store_true")
+    parser.add_argument("--reset-db", action="store_true")
+    parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 
     if not any([args.full, args.download_only, args.extract_only, args.embed_only]):
@@ -132,12 +83,8 @@ def main():
     print("🚀 DocSense AI Ingestion Pipeline")
     print("=" * 70)
 
-    if args.dry_run:
-        print("🔍 DRY-RUN MODE — No changes will be made.")
-        return
-
     try:
-        # Reset database if requested (before any embedding)
+        # Reset database if requested (collection only)
         if args.reset_db:
             if not reset_chroma_db(args.force):
                 print("❌ Database reset cancelled. Aborting.")
@@ -153,33 +100,27 @@ def main():
             print("\n📄 Step 2: Extracting text, tables & images...")
             run_extract()
 
-        # Step 3: Chunk & Embed
+        # Step 3 & 4: Chunk & Embed + Graph
         if args.full or args.embed_only:
             print("\n🔨 Step 3: Chunking and embedding into ChromaDB...")
             run_chunk_embed()
+            print("\n🕸️ Step 4: Building Knowledge Graph in Neo4j...")
+            build_graph(reset_db=args.reset_db)
 
-        # Cleanup temporary files — only after successful embedding
-        if (args.full or args.embed_only) and (args.clean or DEFAULT_CLEAN):
+        # Cleanup
+        if (args.full or args.embed_only) and args.clean:
             print("\n🧹 Starting temporary files cleanup...")
+            cleanup_temp_directories(force=True, keep_extracted=False)
 
-            # Default: delete ALL temporary folders (including extracted_texts)
-            # Only keep extracted_texts if you explicitly want to debug chunking
-            cleanup_temp_directories(
-                force=True,           # Skip confirmation in automated pipeline
-                keep_extracted=False  # ← This controls whether extracted_texts is kept
-            )
-
-        # Final success message
         print("\n🎉 Pipeline completed successfully!")
-        print(f"   Vector store: {CHROMA_PATH.resolve()}")
-
+        print(f" Vector store: {CHROMA_PATH.resolve()}")
         if args.reset_db:
-            print("   → Database was fully reset and rebuilt.")
-        if args.clean or DEFAULT_CLEAN:
-            print("   → Temporary files were cleaned.")
+            print(" → Database was fully reset and rebuilt.")
 
     except Exception as e:
         print(f"\n❌ Pipeline failed: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 
