@@ -14,6 +14,11 @@ python-dotenv
 pymupdf
 pdfplumber
 pymupdf4llm
+streamlit
+langchain-neo4j
+langchain-community
+langchain-ollama
+langchain-experimental   # for LLMGraphTransformer
 
 # For development and faster installs
 uv>=0.4.0
