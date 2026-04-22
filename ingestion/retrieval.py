@@ -54,7 +54,9 @@ class DocSenseRetriever:
                     "document_name": meta.get("document_name"),
                     "folder": folder,
                     "chunk_type": meta.get("chunk_type", "text"),
-                    "page": meta.get("page_number")
+                    "page": meta.get("page_number"),
+                    "drive_link": meta.get("drive_link"), 
+                    "drive_file_id": meta.get("drive_file_id") 
                 })
 
         # Return top N after filtering
