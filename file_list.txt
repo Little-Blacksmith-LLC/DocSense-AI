@@ -1,5 +1,10 @@
 README.md
+streamlit_app.py
 ingestion/drive_explorer.py
 ingestion/text_extractor.py
 ingestion/chunk_and_embed.py
 ingestion/retrieval.py
+ingestion/cleanup.py
+ingestion/config.py
+ingestion/ingest.py
+ingestion/hybrid_retriever.py
